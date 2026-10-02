@@ -1,4 +1,3 @@
-@'
 # Abhedya Chakra
 ### Explainable Mule-Account Risk Analysis & Digital Fund Tracing
 
@@ -80,3 +79,30 @@ Feature Engineering
                   |
                   v
         Investigation CSV Reports
+```
+
+## Reproducing the Backend
+
+Use Python 3.11 or newer and install the pinned dependencies:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Large source and generated data files are intentionally not stored in Git. To rebuild the fund-tracing input, place `VoidHacks8_MuleAccount_2M_Transactions.csv` in the project root, then run:
+
+```powershell
+python tests/rebuild_transaction_edges.py
+python tests/add_source_row_id.py
+```
+
+The API also requires `data/processed/integrated_risk_features_v1.parquet`. It can be assembled with `python backend/detection/integrate_risk_signals.py` after providing `fan_risk_scores.parquet`, `graph_risk_scores.parquet`, `account_temporal_risk_v2.parquet`, and `final_account_risk_v3.parquet` in `data/processed/`. The upstream steps that produce those four score files are not included in this repository, so the risk-scoring data pipeline is not fully reproducible from this repository alone.
+
+Once the required data files are in place, start the API with:
+
+```powershell
+python -m uvicorn backend.api.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` for the interactive API documentation.

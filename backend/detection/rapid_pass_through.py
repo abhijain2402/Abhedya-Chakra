@@ -6,7 +6,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 INPUT = ROOT / "data" / "processed" / "transaction_edges_with_row_id.parquet"
-OUTPUT = ROOT / "data" / "processed" / "rapid_pass_through_candidates_v2.parquet"
+OUTPUT = ROOT / "data" / "processed" / "rapid_pass_through_candidates_v5.parquet"
 
 if OUTPUT.exists():
     raise FileExistsError(f"Output already exists: {OUTPUT}")
@@ -32,7 +32,7 @@ tx = tx.dropna(
 )
 tx = tx[tx["Amount"] > 0]
 tx = tx[tx["Sender_Account"] != tx["Receiver_Account"]].copy()
-tx["ts_ns"] = tx["Timestamp"].astype("int64")
+tx["ts_ns"] = tx["Timestamp"].astype("datetime64[ns]").astype("int64")
 tx.reset_index(drop=True, inplace=True)
 
 incoming_groups = tx.groupby("Receiver_Account", sort=False).indices
@@ -52,9 +52,9 @@ for account in accounts:
     incoming["Direction"] = "IN"
 
     outgoing = tx.iloc[out_idx][
-        ["Source_Row_ID", "Transaction_ID", "Timestamp", "ts_ns", "Amount"]
+        ["Source_Row_ID", "Transaction_ID", "Timestamp",
+        "ts_ns", "Amount", "Receiver_Account"]
     ].copy()
-    outgoing["Direction"] = "OUT"
 
     events = pd.concat([incoming, outgoing], ignore_index=True)
     events.sort_values(
@@ -74,7 +74,7 @@ for account in accounts:
         if e.Direction == "IN":
             lot = [
                 row_id, e.Transaction_ID, ts_ns,
-                amount, amount, 0.0, 0,
+                amount, amount, 0.0, 0, set(),
             ]
             lots.append(lot)
             all_lots.append(lot)
@@ -90,6 +90,7 @@ for account in accounts:
             if MIN_AGE_NS <= age <= MAX_AGE_NS:
                 lot[5] += allocated
                 lot[6] += 1
+                lot[7].add(e.Receiver_Account)
 
             lot[4] -= allocated
             remaining_out -= allocated
@@ -98,22 +99,24 @@ for account in accounts:
                 lots.popleft()
 
     for lot in all_lots:
-        row_id, tx_id, ts_ns, original, _, attributed, out_count = lot
+        row_id, tx_id, ts_ns, original, _, attributed, out_count, receivers = lot
         ratio = attributed / original if original > 0 else 0
+        distinct_receivers = len(receivers)
 
-        if ratio >= THRESHOLD and out_count > 0:
-            candidates.append({
-                "Account_ID": account,
-                "Source_Row_ID": row_id,
-                "Transaction_ID": tx_id,
-                "Incoming_Timestamp": pd.to_datetime(ts_ns),
-                "Incoming_Amount": original,
-                "Outgoing_Amount_3_to_15m": attributed,
-                "Outgoing_Transaction_Count": out_count,
-                "Outgoing_Incoming_Ratio": ratio,
-                "Pass_Through_Flag": True,
-            })
-
+    if ratio >= THRESHOLD and out_count >= 2 and distinct_receivers >= 2:
+        candidates.append({
+            "Account_ID": account,
+            "Source_Row_ID": row_id,
+            "Transaction_ID": tx_id,
+            "Incoming_Timestamp": pd.to_datetime(ts_ns, unit="ns"),
+            "Incoming_Amount": original,
+            "Outgoing_Amount_3_to_15m": attributed,
+            "Outgoing_Transaction_Count": out_count,
+            "Outgoing_Incoming_Ratio": ratio,
+            "Distinct_Downstream_Accounts": distinct_receivers,
+            "Downstream_Accounts": sorted(receivers),
+            "Pass_Through_Flag": True,
+        })
 print("Saving candidate evidence...")
 result = pd.DataFrame(candidates)
 
