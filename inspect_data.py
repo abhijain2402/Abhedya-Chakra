@@ -1,26 +1,16 @@
-
-import pyarrow.parquet as pq
+import polars as pl
 
 files = [
-    "data/processed/transaction_edges.parquet",
-    "data/processed/account_graph_features.parquet",
+    "data/processed/fan_risk_scores.parquet",
+    "data/processed/graph_risk_scores.parquet"
 ]
 
 for file in files:
-    print(f"\n{'=' * 50}")
-    print(f"FILE: {file}")
+    df = pl.read_parquet(file)
 
-    try:
-        parquet_file = pq.ParquetFile(file)
-
-        print("Rows:", parquet_file.metadata.num_rows)
-        print("Columns:", parquet_file.schema.names)
-        print("Schema:")
-        print(parquet_file.schema)
-
-        # Read only the first 5 rows
-        print("First 5 rows:")
-        print(parquet_file.read_row_group(0).slice(0, 5).to_pandas())
-
-    except Exception as e:
-        print("Error:", repr(e))
+    print(f"\n{'='*50}")
+    print(file)
+    print("Shape:", df.shape)
+    print("Columns:", df.columns)
+    print("Schema:", df.schema)
+    print(df.head(5))
