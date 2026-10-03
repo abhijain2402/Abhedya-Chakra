@@ -7,7 +7,11 @@ import numpy as np
 # Project paths
 ROOT = Path(__file__).resolve().parents[1]
 
-CSV_FILE = ROOT / "VoidHacks8_MuleAccount_2M_Transactions.csv"
+RAW_DIR = ROOT / "data" / "uploads"
+CSV_FILE = RAW_DIR / "VoidHacks8_MuleAccount_2M_Transactions.csv"
+if not CSV_FILE.exists():
+    matches = sorted(RAW_DIR.glob("VoidHacks8_MuleAccount_2M_Transactions*.csv"))
+    CSV_FILE = matches[0] if matches else CSV_FILE
 PARQUET_FILE = (
     ROOT / "data" / "processed" / "account_graph_features.parquet"
 )

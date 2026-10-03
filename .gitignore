@@ -1,8 +1,12 @@
 .venv/
 __pycache__/
+*.py[cod]
 .env
-*.csv
-*.parquet
+.pytest_cache/
+artifacts/database/duckdb_tmp/
+data/raw/uploads/
+data/uploads/
+data/processed/
 
 # Archives
 *.zip
