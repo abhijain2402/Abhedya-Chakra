@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useInvestigation } from '../context/InvestigationContext';
-import { generateReport, fetchAccountDetails, getExportHighRiskUrl, getExportLowRiskUrl } from '../services/api';
+import { generateReport, fetchAccountDetails, fetchOverviewStats, getExportHighRiskUrl, getExportLowRiskUrl } from '../services/api';
 import { Download, Mail, FileSpreadsheet, FileText, CheckCircle2, AlertTriangle, Shield, TrendingUp } from 'lucide-react';
 
 export default function ReportsExportsView() {
   const { selectedAccountId, setNotificationModalOpen } = useInvestigation();
   const [reportData, setReportData] = useState(null);
   const [accountDetails, setAccountDetails] = useState(null);
+  const [overviewStats, setOverviewStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(null);
     Promise.all([
       generateReport(selectedAccountId),
-      fetchAccountDetails(selectedAccountId)
-    ]).then(([rep, det]) => {
+      fetchAccountDetails(selectedAccountId),
+      fetchOverviewStats()
+    ]).then(([rep, det, stats]) => {
       setReportData(rep);
       setAccountDetails(det);
+      setOverviewStats(stats);
       setLoading(false);
     }).catch((err) => {
       console.error('Report error:', err);
+      setLoadError(err.message || 'Could not load report and screening counts.');
       setLoading(false);
     });
   }, [selectedAccountId]);
@@ -34,10 +40,15 @@ export default function ReportsExportsView() {
     downloadAnchor.remove();
   };
 
-  const isHighRisk = (accountDetails?.percentiles?.final || 0) >= 80;
+  const isHighRisk = accountDetails?.anomaly_supported_candidate;
 
   return (
     <div className="animate-in">
+      {loadError && (
+        <div className="card" role="alert" style={{ marginBottom: 16, color: '#fca5a5' }}>
+          {loadError}
+        </div>
+      )}
       {/* Page Header */}
       <div className="page-header flex-between" style={{ marginBottom: '20px' }}>
         <div>
@@ -78,20 +89,19 @@ export default function ReportsExportsView() {
               Export Complete Dataset Account Files
             </h2>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '5px', maxWidth: '600px' }}>
-              Download complete CSV files containing ALL accounts across the entire 24,873 account dataset —
-              suspicious accounts requiring review or non-suspicious baseline accounts.
+              Compare rule-based candidates with accounts also identified as behavioral anomalies. Neither result is a confirmed mule/non-mule decision.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              24,873 total accounts
+              {overviewStats?.total_accounts?.toLocaleString()} total accounts
             </span>
           </div>
         </div>
 
         {/* Two export cards — properly aligned */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'stretch' }}>
-          {/* Suspicious Accounts */}
+          {/* Anomaly-supported candidates */}
           <div style={{
             background: 'rgba(9, 18, 35, 0.85)',
             border: '1px solid rgba(255, 59, 59, 0.3)',
@@ -107,18 +117,20 @@ export default function ReportsExportsView() {
           >
             {/* Card header row */}
             <div className="flex-between" style={{ marginBottom: '14px' }}>
-              <span className="badge badge-high" style={{ fontSize: '12px' }}>4,968 ACCOUNTS</span>
+              <span className="badge badge-high" style={{ fontSize: '12px' }}>
+                {overviewStats?.anomaly_supported_candidate_count?.toLocaleString()} CANDIDATES
+              </span>
               <FileSpreadsheet size={22} color="#fca5a5" />
             </div>
 
             {/* Card body */}
             <div style={{ flex: 1 }}>
               <h3 style={{ color: '#ffffff', fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>
-                Accounts Requiring Review
+                Anomaly-Supported Candidates
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.55', marginBottom: '0' }}>
-                All 4,968 suspicious accounts with Final Risk Percentile ≥ 80.0, including layer classifications,
-                risk scores, and priority rankings.
+                Accounts with Final Risk Percentile ≥ 80 that Isolation Forest also flags as behavioral anomalies.
+                These are candidates for validation, not confirmed mules.
               </p>
             </div>
 
@@ -130,14 +142,14 @@ export default function ReportsExportsView() {
               className="btn btn-danger"
               style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}
               href={getExportHighRiskUrl()}
-              download="AbhedyaChakra_Accounts_Requiring_Review_All_Suspicious.csv"
+              download="AbhedyaChakra_Anomaly_Supported_Candidates.csv"
             >
               <Download size={15} />
-              <span>Download Suspicious Accounts CSV</span>
+              <span>Download Anomaly-Supported Candidates CSV</span>
             </a>
           </div>
 
-          {/* Non-Suspicious Accounts */}
+          {/* Accounts outside the combined screening result */}
           <div style={{
             background: 'rgba(9, 18, 35, 0.85)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -153,18 +165,19 @@ export default function ReportsExportsView() {
           >
             {/* Card header row */}
             <div className="flex-between" style={{ marginBottom: '14px' }}>
-              <span className="badge badge-low" style={{ fontSize: '12px' }}>19,905 ACCOUNTS</span>
+              <span className="badge badge-low" style={{ fontSize: '12px' }}>
+                {overviewStats?.outside_candidate_count?.toLocaleString()} ACCOUNTS
+              </span>
               <FileSpreadsheet size={22} color="#6ee7b7" />
             </div>
 
             {/* Card body */}
             <div style={{ flex: 1 }}>
               <h3 style={{ color: '#ffffff', fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>
-                Lower-Priority Baseline Accounts
+                Other Screening Results
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.55', marginBottom: '0' }}>
-                All 19,905 non-suspicious baseline accounts with Final Risk Percentile &lt; 80.0.
-                Complete dataset for comparative analysis and regulatory review.
+                Accounts not selected by both screening stages. Not being selected does not confirm that an account is non-mule.
               </p>
             </div>
 
@@ -176,10 +189,10 @@ export default function ReportsExportsView() {
               className="btn btn-success"
               style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}
               href={getExportLowRiskUrl()}
-              download="AbhedyaChakra_Lower_Priority_Accounts_All_Baseline.csv"
+              download="AbhedyaChakra_Other_Screening_Results.csv"
             >
               <Download size={15} />
-              <span>Download Baseline Accounts CSV</span>
+              <span>Download Other Screening Results CSV</span>
             </a>
           </div>
         </div>
@@ -207,7 +220,16 @@ export default function ReportsExportsView() {
             </div>
 
             <div style={{ textAlign: 'right' }}>
-              <span className={`badge ${isHighRisk ? 'badge-high' : 'badge-low'}`} style={{ fontSize: '13px', padding: '5px 14px' }}>
+              <span
+                className={`badge ${isHighRisk ? 'badge-high' : ''}`}
+                style={{
+                  fontSize: '13px',
+                  padding: '5px 14px',
+                  color: isHighRisk ? undefined : '#cbd5e1',
+                  background: isHighRisk ? undefined : 'rgba(148,163,184,0.12)',
+                  border: isHighRisk ? undefined : '1px solid rgba(148,163,184,0.3)',
+                }}
+              >
                 {reportData?.summary?.review_priority}
               </span>
             </div>

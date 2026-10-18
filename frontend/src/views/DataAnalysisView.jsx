@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { runDataAnalysis, uploadDatasetFile } from '../services/api';
-import { Play, Upload, CheckCircle2, FileText, AlertCircle } from 'lucide-react';
+import { Play, Upload, AlertCircle } from 'lucide-react';
 
 export default function DataAnalysisView() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [analysisError, setAnalysisError] = useState(null);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -13,33 +13,23 @@ export default function DataAnalysisView() {
   const [uploadError, setUploadError] = useState(null);
 
   const steps = [
-    'Preparing dataset files',
-    'Reading transaction edges (2,000,000 rows)',
-    'Building fan, graph, and temporal features',
-    'Running layer classification & rapid pass-through screening',
-    'Calculating percentile risk fusion model',
-    'Building in-memory fund-tracing index',
-    'Analysis complete'
+    'Dataset file found',
+    'Transaction account columns validated',
+    'Transaction rows and unique accounts measured',
+    'Diagnostics completed'
   ];
 
-  const handleStartAnalysis = async () => {
+  const handleStartAnalysis = async (datasetName = uploadResult?.filename || 'VoidHacks8_MuleAccount_2M_Transactions.csv') => {
     setAnalyzing(true);
     setAnalysisResult(null);
-    setCurrentStep(1);
-
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => (prev < 5 ? prev + 1 : prev));
-    }, 400);
+    setAnalysisError(null);
 
     try {
-      const activeFile = uploadResult?.filename || 'VoidHacks8_MuleAccount_2M_Transactions.csv';
-      const res = await runDataAnalysis(activeFile);
-      clearInterval(interval);
-      setCurrentStep(6);
-      setAnalysisResult(res);
+      const result = await runDataAnalysis(datasetName);
+      setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
-      clearInterval(interval);
+      setAnalysisError(err.message || 'Failed to analyze this transaction dataset.');
     } finally {
       setAnalyzing(false);
     }
@@ -49,6 +39,8 @@ export default function DataAnalysisView() {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
       setUploadError(null);
+      setUploadResult(null);
+      setAnalysisResult(null);
     }
   };
 
@@ -60,12 +52,11 @@ export default function DataAnalysisView() {
     try {
       const res = await uploadDatasetFile(selectedFile);
       setUploadResult(res);
-      setUploading(false);
-      // Automatically trigger analysis on uploaded dataset
-      handleStartAnalysis();
+      await handleStartAnalysis(res.filename);
     } catch (err) {
       console.error('Upload error:', err);
       setUploadError(err.message || 'Failed to upload dataset file');
+    } finally {
       setUploading(false);
     }
   };
@@ -73,9 +64,9 @@ export default function DataAnalysisView() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">2. Data Analysis & Performance Benchmark</h1>
+        <h1 className="page-title">2. Data Analysis & Dataset Diagnostics</h1>
         <p className="page-description">
-          Run dataset analysis pipeline, upload custom transaction datasets, and measure real-time processing duration.
+          Inspect transaction dataset structure, row counts, unique accounts, and missing account identifiers.
         </p>
       </div>
 
@@ -85,10 +76,10 @@ export default function DataAnalysisView() {
           <div>
             <h3 style={{ fontSize: '18px', color: '#ffffff' }}>Upload Custom Transaction Dataset</h3>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              Select a CSV or Parquet transaction dataset from your computer to run the analysis pipeline.
+              Upload a CSV or Parquet transaction dataset with Sender_Account and Receiver_Account columns to inspect its records and accounts.
             </p>
           </div>
-          <span className="badge badge-layer-l1">CUSTOM DATASET ANALYSIS</span>
+          <span className="badge badge-layer-l1">TRANSACTION DATASET DIAGNOSTICS</span>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: '#0b0f19', padding: '16px', borderRadius: '10px', border: '1px dashed var(--border-light)' }}>
@@ -105,7 +96,7 @@ export default function DataAnalysisView() {
             onClick={handleUploadSubmit}
           >
             <Upload size={16} />
-            <span>{uploading ? 'Uploading & Parsing...' : 'Upload & Run Analysis'}</span>
+            <span>{uploading ? 'Uploading & Analyzing...' : 'Upload & Analyze Dataset'}</span>
           </button>
         </div>
 
@@ -119,10 +110,10 @@ export default function DataAnalysisView() {
         {uploadResult && (
           <div style={{ marginTop: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '14px', borderRadius: '8px' }}>
             <strong style={{ color: '#6ee7b7', display: 'block', marginBottom: '4px' }}>
-              ✓ Dataset Uploaded Successfully: {uploadResult.filename}
+              ✓ Dataset Uploaded and Validated: {uploadResult.filename}
             </strong>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              Size: {uploadResult.size_mb} MB | Rows Parsed: {uploadResult.total_rows?.toLocaleString()} rows | Upload Time: {uploadResult.execution_timing?.total_sec}s
+              Size: {uploadResult.size_mb} MB | Transaction columns validated | Diagnostics are shown below
             </span>
           </div>
         )}
@@ -139,11 +130,11 @@ export default function DataAnalysisView() {
           </div>
           <button
             className="btn btn-primary"
-            onClick={handleStartAnalysis}
-            disabled={analyzing}
+            onClick={() => handleStartAnalysis()}
+            disabled={analyzing || uploading || Boolean(selectedFile && !uploadResult)}
           >
             <Play size={16} />
-            <span>{analyzing ? 'Analyzing Pipeline...' : 'Run Real Analysis Benchmark'}</span>
+            <span>{analyzing ? 'Analyzing Dataset...' : 'Analyze Dataset'}</span>
           </button>
         </div>
 
@@ -158,17 +149,22 @@ export default function DataAnalysisView() {
           <div className="card" style={{ background: '#0b0f19' }}>
             <div className="stat-label">File Size</div>
             <strong style={{ fontSize: '18px', color: '#ffffff' }}>
-              {uploadResult ? `${uploadResult.size_mb} MB` : '286.78 MB'}
+              {uploadResult ? `${uploadResult.size_mb} MB` : 'Run analysis to measure'}
             </strong>
           </div>
 
           <div className="card" style={{ background: '#0b0f19' }}>
             <div className="stat-label">Record Count</div>
             <strong style={{ fontSize: '18px', color: '#ffffff' }}>
-              {uploadResult ? `${uploadResult.total_rows?.toLocaleString()} Rows` : '2,000,000 Transactions'}
+              {analysisResult ? `${analysisResult.records_analyzed?.toLocaleString()} Transactions` : 'Run analysis to count'}
             </strong>
           </div>
         </div>
+        {selectedFile && !uploadResult && (
+          <p style={{ marginTop: 12, color: 'var(--text-muted)', fontSize: 13 }}>
+            Upload the selected file above before running diagnostics on it.
+          </p>
+        )}
       </div>
 
       {/* Pipeline Stage Progress */}
@@ -177,8 +173,8 @@ export default function DataAnalysisView() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {steps.map((stepText, idx) => {
-            const isDone = currentStep > idx;
-            const isCurrent = currentStep === idx && analyzing;
+            const isDone = Boolean(analysisResult);
+            const isCurrent = analyzing && idx === 2;
 
             return (
               <div
@@ -207,7 +203,7 @@ export default function DataAnalysisView() {
                     fontWeight: 'bold'
                   }}
                 >
-                  {isDone ? '✓' : idx + 1}
+                  {isDone ? '✓' : isCurrent ? '…' : idx + 1}
                 </div>
                 <span
                   style={{
@@ -223,21 +219,47 @@ export default function DataAnalysisView() {
         </div>
       </div>
 
-      {/* Real Measured Benchmark Card */}
+      {analysisError && (
+        <div className="card" role="alert" style={{ marginBottom: 24, color: '#fca5a5' }}>
+          <AlertCircle size={16} style={{ display: 'inline', marginRight: 8 }} />
+          {analysisError}
+        </div>
+      )}
+
       {analysisResult && (
         <div className="card" style={{ border: '1px solid var(--accent-blue)' }}>
           <div className="flex-between mb-20">
             <div>
-              <span className="badge badge-low">Verified Performance</span>
+              <span className="badge badge-low">Dataset Diagnostics</span>
               <h2 style={{ fontSize: '24px', color: '#ffffff', marginTop: '8px' }}>
-                Analysis completed in: {analysisResult.execution_timing?.total_execution_sec} seconds
+                {analysisResult.dataset_name}
               </h2>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="stat-label">Benchmark Target</div>
+              <div className="stat-label">Measured scan time</div>
               <strong style={{ fontSize: '20px', color: '#93c5fd' }}>
-                {analysisResult.target_seconds}s Target
+                {analysisResult.execution_timing?.total_execution_sec}s
               </strong>
+            </div>
+          </div>
+
+          <div className="grid-cols-3 mb-20">
+            <div className="card stat-card">
+              <div className="stat-label">Transactions</div>
+              <div className="stat-value">{analysisResult.records_analyzed?.toLocaleString()}</div>
+            </div>
+            <div className="card stat-card">
+              <div className="stat-label">Unique Accounts</div>
+              <div className="stat-value">{analysisResult.accounts_analyzed?.toLocaleString()}</div>
+            </div>
+            <div className="card stat-card">
+              <div className="stat-label">Missing Account IDs</div>
+              <div className="stat-value">
+                {(
+                  (analysisResult.missing_sender_account_count || 0)
+                  + (analysisResult.missing_receiver_account_count || 0)
+                ).toLocaleString()}
+              </div>
             </div>
           </div>
 
@@ -245,30 +267,21 @@ export default function DataAnalysisView() {
             <table>
               <thead>
                 <tr>
-                  <th>Stage</th>
-                  <th>Measured Duration</th>
-                  <th>Target</th>
-                  <th>Status</th>
+                  <th>Account field</th>
+                  <th>Unique account IDs</th>
+                  <th>Missing IDs</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Data Preparation</td>
-                  <td>{analysisResult.execution_timing?.data_preparation_sec}s</td>
-                  <td>&lt; 1.0s</td>
-                  <td><span className="badge badge-low">PASS</span></td>
+                  <td>Sender</td>
+                  <td>{analysisResult.sender_accounts?.toLocaleString()}</td>
+                  <td>{analysisResult.missing_sender_account_count?.toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td>Feature & Risk Fusion</td>
-                  <td>{analysisResult.execution_timing?.feature_and_risk_building_sec}s</td>
-                  <td>&lt; 30.0s</td>
-                  <td><span className="badge badge-low">PASS</span></td>
-                </tr>
-                <tr>
-                  <td>In-Memory Graph Indexing</td>
-                  <td>{analysisResult.execution_timing?.graph_indexing_sec}s</td>
-                  <td>&lt; 2.0s</td>
-                  <td><span className="badge badge-low">PASS</span></td>
+                  <td>Receiver</td>
+                  <td>{analysisResult.receiver_accounts?.toLocaleString()}</td>
+                  <td>{analysisResult.missing_receiver_account_count?.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>

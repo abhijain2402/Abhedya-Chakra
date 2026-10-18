@@ -40,7 +40,7 @@ export default function AccountInvestigationView() {
   }
 
   const p          = accountData?.percentiles || {};
-  const isHighPrio = (p.final || 0) >= 80.0;
+  const isHighPrio = accountData?.anomaly_supported_candidate;
   const passThru   = accountData?.rapid_pass_through || {};
 
   return (
@@ -90,20 +90,31 @@ export default function AccountInvestigationView() {
           marginBottom: 20,
           background: isHighPrio
             ? 'linear-gradient(135deg, rgba(220,38,38,0.14) 0%, rgba(9,18,35,0.96) 100%)'
-            : 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(9,18,35,0.96) 100%)',
-          border: isHighPrio ? '1px solid rgba(220,38,38,0.45)' : '1px solid rgba(16,185,129,0.4)',
+            : 'linear-gradient(135deg, rgba(100,116,139,0.12) 0%, rgba(9,18,35,0.96) 100%)',
+          border: isHighPrio ? '1px solid rgba(220,38,38,0.45)' : '1px solid rgba(148,163,184,0.35)',
           padding: '24px 28px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
           {/* Left: score */}
           <div>
-            <span className={`badge ${isHighPrio ? 'badge-high' : 'badge-low'}`} style={{ fontSize: 12, padding: '5px 14px', marginBottom: 14, display: 'inline-flex' }}>
-              {isHighPrio ? <AlertTriangle size={11} style={{ marginRight: 4 }} /> : <CheckCircle size={11} style={{ marginRight: 4 }} />}
+            <span
+              className={`badge ${isHighPrio ? 'badge-high' : ''}`}
+              style={{
+                fontSize: 12,
+                padding: '5px 14px',
+                marginBottom: 14,
+                display: 'inline-flex',
+                color: isHighPrio ? undefined : '#cbd5e1',
+                background: isHighPrio ? undefined : 'rgba(148,163,184,0.12)',
+                border: isHighPrio ? undefined : '1px solid rgba(148,163,184,0.3)',
+              }}
+            >
+              {isHighPrio ? <AlertTriangle size={11} style={{ marginRight: 4 }} /> : <Shield size={11} style={{ marginRight: 4 }} />}
               {accountData?.review_priority_label}
             </span>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>COMPOSITE RISK RANK</div>
-            <div style={{ fontSize: 52, fontWeight: 900, fontFamily: 'var(--font-heading)', color: isHighPrio ? '#f87171' : '#34d399', lineHeight: 1, letterSpacing: '-2px' }}>
+            <div style={{ fontSize: 52, fontWeight: 900, fontFamily: 'var(--font-heading)', color: isHighPrio ? '#f87171' : '#cbd5e1', lineHeight: 1, letterSpacing: '-2px' }}>
               {p.final?.toFixed(1)}<span style={{ fontSize: 24 }}>%</span>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 8, maxWidth: 340 }}>
@@ -118,7 +129,7 @@ export default function AccountInvestigationView() {
             borderRadius: 12, padding: '16px 20px',
             maxWidth: 400, flex: '1 1 320px',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: isHighPrio ? '#fca5a5' : '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: isHighPrio ? '#fca5a5' : '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 8 }}>
               Why Review?
             </div>
             <ul style={{ fontSize: 12.5, color: 'var(--text-muted)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 5, lineHeight: 1.5 }}>
@@ -172,7 +183,7 @@ export default function AccountInvestigationView() {
               {accountData?.layer === 'L1_Collector'   && '"Receives money from multiple accounts — primary collection node."'}
               {accountData?.layer === 'L2_Distributor' && '"Receives money and sends money to multiple accounts — laundering middle layer."'}
               {accountData?.layer === 'L3_Terminal'    && '"Appears near the end of observed transaction paths — exit/terminal node."'}
-              {accountData?.layer === 'Unclassified'   && '"Baseline account without specific structural pattern flags."'}
+              {accountData?.layer === 'Unclassified'   && '"No configured structural pattern was identified; this does not establish legitimate activity."'}
             </p>
             {accountData?.layer_evidence && (
               <div style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 8, borderTop: '1px solid var(--border-subtle)', paddingTop: 7 }}>

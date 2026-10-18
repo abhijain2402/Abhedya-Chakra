@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { fetchOverviewStats, fetchReviewSuggestions, getExportHighRiskUrl, getExportLowRiskUrl } from '../services/api';
+import { fetchOverviewStats, fetchReviewSuggestions, getExportHighRiskUrl, getExportLowRiskUrl, getExportRapidPassThroughUrl } from '../services/api';
 import { useInvestigation } from '../context/InvestigationContext';
-import { AlertTriangle, Download, Users, Repeat, Shield, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Download, Users, Repeat, Shield, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function OverviewView() {
   const { selectAccount } = useInvestigation();
   const [stats, setStats] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     Promise.all([fetchOverviewStats(), fetchReviewSuggestions()])
@@ -18,6 +19,7 @@ export default function OverviewView() {
       })
       .catch((err) => {
         console.error('Failed to load overview:', err);
+        setLoadError(err.message || 'Could not load overview data from the API.');
         setLoading(false);
       });
   }, []);
@@ -28,6 +30,12 @@ export default function OverviewView() {
 
   return (
     <div style={{ width: '100%' }}>
+      {loadError && (
+        <div className="card" role="alert" style={{ marginBottom: 16, color: '#fca5a5' }}>
+          <AlertCircle size={16} style={{ display: 'inline', marginRight: 8 }} />
+          {loadError}
+        </div>
+      )}
       {/* Clean Full-Width Header */}
       <div className="page-header mb-20" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
         <h1 className="page-title" style={{ fontSize: '28px', whiteSpace: 'nowrap' }}>
@@ -42,23 +50,31 @@ export default function OverviewView() {
       <div className="card mb-32" style={{ border: '1px solid var(--border-color)', padding: '16px 24px' }}>
         <div className="flex-between">
           <span className="stat-label">Full Dataset CSV File Downloads:</span>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <a
               className="btn btn-primary"
               href={getExportHighRiskUrl()}
-              download="AbhedyaChakra_Accounts_Requiring_Review_All_Suspicious.csv"
+              download="AbhedyaChakra_Anomaly_Supported_Candidates.csv"
             >
               <Download size={15} />
-              <span>Download All Suspicious Accounts ({stats?.accounts_requiring_review?.toLocaleString()})</span>
+              <span>Download Anomaly-Supported Candidates ({stats?.anomaly_supported_candidate_count?.toLocaleString()})</span>
             </a>
 
             <a
               className="btn btn-secondary"
               href={getExportLowRiskUrl()}
-              download="AbhedyaChakra_Lower_Priority_Accounts_All_Baseline.csv"
+              download="AbhedyaChakra_Other_Screening_Results.csv"
             >
               <Download size={15} />
-              <span>Download All Non-Suspicious Accounts ({stats?.lower_priority_accounts?.toLocaleString()})</span>
+              <span>Download Other Screening Results ({stats?.outside_candidate_count?.toLocaleString()})</span>
+            </a>
+            <a
+              className="btn btn-secondary"
+              href={getExportRapidPassThroughUrl()}
+              download="AbhedyaChakra_Rapid_Pass_Through_Accounts.csv"
+            >
+              <Download size={15} />
+              <span>Download Rapid Pass-Through Accounts ({stats?.rapid_pass_through_candidates?.toLocaleString()})</span>
             </a>
           </div>
         </div>
@@ -79,19 +95,21 @@ export default function OverviewView() {
         </div>
 
         <div className="card stat-card" style={{ borderColor: 'rgba(239, 68, 68, 0.4)' }}>
-          <div className="stat-label" style={{ color: '#fca5a5' }}>Accounts Needing Review</div>
+          <div className="stat-label" style={{ color: '#fca5a5' }}>Anomaly-Supported Candidates</div>
           <div className="stat-value" style={{ color: '#ef4444' }}>
-            {stats?.accounts_requiring_review?.toLocaleString()}
+            {stats?.anomaly_supported_candidate_count?.toLocaleString()}
           </div>
-          <div className="stat-subtext">Final risk percentile ≥ 80.0</div>
+          <div className="stat-subtext">
+            {stats?.rule_based_candidate_count?.toLocaleString()} rule candidates; this count passed both screens, not confirmed mules
+          </div>
         </div>
 
         <div className="card stat-card">
-          <div className="stat-label" style={{ color: '#6ee7b7' }}>Lower Priority Accounts</div>
+          <div className="stat-label" style={{ color: '#6ee7b7' }}>Other Screening Results</div>
           <div className="stat-value" style={{ color: '#10b981' }}>
-            {stats?.lower_priority_accounts?.toLocaleString()}
+            {stats?.outside_candidate_count?.toLocaleString()}
           </div>
-          <div className="stat-subtext">Baseline transaction activity</div>
+          <div className="stat-subtext">{stats?.rule_only_excluded_count?.toLocaleString()} rule candidates filtered out by Isolation Forest; not confirmed negatives</div>
         </div>
       </div>
 

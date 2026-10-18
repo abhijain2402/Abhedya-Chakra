@@ -1,6 +1,14 @@
 # Data Setup
 
-Large source datasets and generated outputs are kept out of Git. Place the authorized source transaction CSV in `data/uploads/`. The processing scripts accept the standard dataset name `VoidHacks8_MuleAccount_2M_Transactions.csv` and downloaded copies with a suffix such as `(1)`.
+Project data is distributed separately from the source code because the source transaction file and generated outputs are large. For a fresh checkout, obtain the authorized processed files from the project data owner and preserve these paths:
+
+- `data/processed/integrated_risk_features_v1.parquet`
+- `data/processed/account_layer_classification_v1.parquet`
+- `data/processed/transaction_edges_with_row_id.parquet`
+
+These three files are required by the API. `data/processed/rapid_pass_through_candidates_v5.parquet` is optional. The raw transaction CSV is needed only for upload or for rebuilding transaction outputs; place it in `data/uploads/`. The processing scripts accept the standard name `VoidHacks8_MuleAccount_2M_Transactions.csv` and downloaded copies with a suffix such as `(1)`. Transfer transaction data only through an authorized private channel; do not commit it to a public repository.
+
+The repository's `data-template.zip` contains this setup guide and empty `raw/`, `uploads/`, and `processed/` directory placeholders only. It does not contain account-level records or the files required to run the API.
 
 ## Run the API
 

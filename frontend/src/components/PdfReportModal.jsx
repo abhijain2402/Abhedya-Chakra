@@ -8,14 +8,14 @@ import { X, Printer, Download, Loader } from 'lucide-react';
  */
 function buildReportHtml({ accountId, details, report, transactions, generatedAt }) {
   const p = details?.percentiles || {};
-  const isHigh = (p.final || 0) >= 80;
+  const isHigh = details?.anomaly_supported_candidate === true;
   const rpt = report?.summary || {};
   const passThrough = details?.rapid_pass_through || {};
   const txRows = (transactions || []).slice(0, 30);
 
-  const riskColor   = isHigh ? '#c0392b' : '#16a085';
-  const riskBg      = isHigh ? '#fdecea' : '#eafaf1';
-  const riskLabel   = isHigh ? '⚠ HIGH PRIORITY — IMMEDIATE REVIEW' : '✓ LOWER PRIORITY — STANDARD REVIEW';
+  const riskColor   = isHigh ? '#c0392b' : '#64748b';
+  const riskBg      = isHigh ? '#fdecea' : '#f1f5f9';
+  const riskLabel   = isHigh ? 'ANOMALY-SUPPORTED REVIEW CANDIDATE' : 'NOT SELECTED BY COMBINED SCREENING';
 
   const pctBar = (val = 0) => `
     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -29,7 +29,7 @@ function buildReportHtml({ accountId, details, report, transactions, generatedAt
     L1_Collector:   'Receives funds from multiple upstream accounts — primary collection node.',
     L2_Distributor: 'Receives funds and redistributes to multiple downstream accounts.',
     L3_Terminal:    'Appears at the end of observed fund-flow paths — exit node.',
-    Unclassified:   'No specific structural pattern flag. Baseline account.',
+    Unclassified:   'No configured structural pattern was identified; this does not establish that the account is legitimate.',
   };
 
   return `<!DOCTYPE html>

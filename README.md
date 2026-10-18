@@ -1,159 +1,202 @@
-# 🛡️ Abhedya Chakra (अभेद्य चक्र)
-### Explainable Mule-Account Risk Analysis & Digital Fund Tracing Platform
+# Abhedya Chakra
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Polars](https://img.shields.io/badge/Data%20Engine-Polars-CD7F32?style=flat)](https://pola.rs/)
-[![React 19](https://img.shields.io/badge/Frontend-React%2019-61DAFB?style=flat&logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Bundler-Vite-646CFF?style=flat&logo=vite)](https://vitejs.dev/)
-[![Vis.js](https://img.shields.io/badge/Graph-Vis--Network-FF5722?style=flat)](https://visjs.org/)
+**Explainable mule-account risk screening, transaction-network investigation, and fund tracing.**
 
-**Abhedya Chakra** is a high-throughput financial forensic platform engineered to detect mule account networks, analyze money-laundering risk signals, and trace complex transaction trails across large-scale datasets (handling 2,000,000+ transactions in sub-second speeds).
+Abhedya Chakra is a full-stack investigation prototype. Its FastAPI backend serves account risk, transaction, network, rapid pass-through, and report endpoints; its React frontend presents those results for investigator review.
 
-The platform prioritizes **explainable, evidence-based investigation**, providing investigators with visual path isolation, risk breakdowns, and downloadable investigative dossiers.
+> **Data and labeling warning:** Scores and alerts are screening leads, not confirmed mule-account labels or proof of fraud. Isolation Forest is unsupervised anomaly detection; it detects unusual feature combinations and does not learn which accounts are mules. Do not use the displayed counts as a claim of confirmed fraud or model accuracy.
 
----
+## Features
 
-## 🎯 Key Features & Capabilities
+- Combines existing fan, graph, temporal, and final risk scores into an investigation priority.
+- Applies an Isolation Forest to account risk and graph-behavior features. An anomaly-supported candidate must both meet the existing `Final_Risk_Percentile >= 80` rule and be marked anomalous by the forest.
+- Displays the rule-based count, combined candidate count, and the rule candidates filtered out by the anomaly screen.
+- Provides account search, risk details, layer signals, transaction history, network visualization, chronological candidate fund tracing, and downloadable reports.
+- Exports anomaly-supported accounts, other screening results, and distinct accounts with rapid pass-through evidence.
+- Provides transaction CSV/Parquet dataset diagnostics for transaction count, unique sender/receiver accounts, and missing account IDs.
 
-### 1. 🔍 Account Risk Fusion Engine
-- **Multi-Signal Integration**: Merges fan ratios (fan-in/fan-out), temporal velocity, pass-through speeds, and graph risk scores into a composite percentile rank.
-- **Layer Classification**: Categorizes accounts into operational roles:
-  - 📥 **L1 Collector** (High incoming fan ratio)
-  - 🔄 **L2 Layerer** (Rapid pass-through & intermediate transfer hub)
-  - 📤 **L3 Mule Hub / Exfiltration** (High outgoing fan ratio)
-- **Review Prioritization**: Instant ranking of high-priority accounts needing regulatory or law enforcement review.
+The Isolation Forest is fitted on the account feature dataset when the API starts, using a fixed random seed and `contamination="auto"`. Its output is not a calibrated probability and is not trained from confirmed investigation outcomes. For example, one local dataset run produced 4,968 accounts meeting the risk rule and 1,227 passing both screens; those figures are specific to that dataset and model version, not expected values or a validated mule count. Review both accepted and filtered-out samples and collect investigator outcomes before claiming improved detection.
 
-### 2. 🌐 Dynamic Network Topology & Hop Tracing
-- **Full Spider-Web Topology**: Interactive visualization of the global transaction graph with dynamic level-of-detail rendering.
-- **Hierarchical Hop Tracing**: Traces candidate transaction paths up to 4 hops outward from any selected root account.
-- **Path Isolation**: Select and isolate specific transaction chains to inspect exact amounts, timestamps, and hop distances.
-- **Connection Chain Explanations**: Click any account node to view a step-by-step breakdown explaining *why* and *how* it connects to the investigated account.
-
-### 3. ⚡ Rapid Pass-Through & Fan Pattern Detection
-- **Fan-In / Fan-Out Detection**: Identifies structured structured money pooling (one-to-many & many-to-one).
-- **Velocity Analysis**: Flags accounts where funds enter and exit within tight time windows (e.g. < 10 minutes).
-
-### 4. 📄 Investigative Reports & Inter-Bank Alerting
-- **Dossier Generation**: Export single-account or multi-hop path reports as styled **PDF documents** or structured **CSV files**.
-- **Bank Notification Modal**: Built-in dispatcher to format and transmit official investigation notices to destination banks or regulatory teams.
-
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Backend API** | [FastAPI](https://fastapi.tiangolo.com/) | High-performance asynchronous REST API |
-| **Data Engine** | [Polars](https://pola.rs/) + [PyArrow](https://arrow.apache.org/) | Sub-second DataFrame query execution over million-row Parquet datasets |
-| **Frontend Framework** | [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) | Modern, ultra-fast client interface |
-| **Graph Visualization** | [Vis-Network](https://visjs.org/) | Canvas & WebGL force-directed and hierarchical graph rendering |
-| **Icons & Styling** | [Lucide React](https://lucide.dev/) + Vanilla CSS | Custom high-contrast dark theme UI design system |
-| **Reporting** | [jsPDF](https://github.com/parallax/jsPDF) + [html2canvas](https://html2canvas.hertzen.com/) | Client-side PDF generation & canvas snapshots |
-
----
-
-## 📁 Project Structure
+## Project layout
 
 ```text
-abhedya-chakra/
+.
 ├── backend/
-│   ├── api/
-│   │   └── main.py                # FastAPI REST endpoints & CORS configuration
-│   ├── features/                  # Feature engineering & risk aggregation pipelines
-│   ├── detection/                 # Fan-in/out and temporal pass-through algorithms
-│   └── tracing/                   # Chronological BFS multi-hop fund tracing engine
-├── frontend/
-│   ├── src/
-│   │   ├── components/            # Graphs, Modals, Filters, Metrics & Sidebars
-│   │   ├── views/                 # Accounts, Network Topology, Risk Signals views
-│   │   ├── context/               # State management (InvestigationContext)
-│   │   └── services/api.js        # API integration client
-│   ├── index.html
-│   └── package.json
-├── data/                          # Processed Parquet datasets & transaction logs
-├── requirements.txt               # Backend Python dependencies
-└── README.md                      # Documentation
+│   ├── api/main.py                   # FastAPI routes and dataset loading
+│   ├── detection/                    # Risk fusion, layers, Isolation Forest, screening
+│   ├── features/fan_metrics/         # Fan feature calculations
+│   └── tracing/                      # Chronological fund tracing
+├── data/
+│   ├── processed/                    # Local generated/authorized Parquet and CSV data
+│   ├── raw/                          # Optional local source data
+│   ├── uploads/                      # Files uploaded through the UI
+│   └── README.md                     # Required data files and preparation notes
+├── frontend/                         # React + Vite user interface
+├── tests/                            # Data-integrity and feature-check scripts
+├── data-template.zip                 # Safe directory template; contains no datasets
+├── requirements.txt                  # Backend dependency ranges
+├── requirements-lock.txt             # Pinned backend dependencies
+└── start.ps1                         # Windows development launcher
 ```
 
----
+## Requirements
 
-## 🚀 Quick Start Guide
+- Python 3.11 or newer
+- Node.js 20.19+ or 22.12+ (with npm)
+- The authorized processed data files listed below
+- Disk space for the project data. The full raw transaction dataset is large; use adequate free space if rebuilding transaction outputs.
 
-### Data Required
+## Obtain the code
 
-The raw transaction dataset and generated Parquet files are intentionally excluded from Git because they are large, local data artifacts. A clean checkout needs the API datasets described in [`data/README.md`](data/README.md) before the backend can start. The raw CSV alone is not sufficient to rebuild every risk input: some upstream graph and risk-score generation steps are not included in this repository.
+Clone the public repository:
 
-### Prerequisites
-- **Python**: `3.11` or higher
-- **Node.js**: `v20.19.0` or `v22.12.0` or higher (`npm` included)
+```powershell
+git clone https://github.com/abhijain2402/Abhedya-Chakra.git
+Set-Location .\Abhedya-Chakra
+```
 
----
+The companion [`data-template.zip`](./data-template.zip) restores the `data/` directory structure and setup notes only. **It deliberately does not include transaction rows, account IDs, processed risk tables, or other account-level records.** The working data in this development checkout is local and must not be uploaded to a public repository.
 
-### Step 1: Clone & Setup Backend
+### Supply authorized data
 
-1. Navigate to the project root directory:
-   ```bash
-   cd abhedya-chakra
-   ```
+Before starting the API, obtain these three processed files from the project data owner through an authorized private channel and put them at the exact paths shown:
 
-2. Create and activate a Python virtual environment:
-   ```bash
-   python -m venv .venv
-   # Windows PowerShell:
-   .\.venv\Scripts\Activate.ps1
-   # Linux/macOS:
-   source .venv/bin/activate
-   ```
+```text
+data/processed/integrated_risk_features_v1.parquet
+data/processed/account_layer_classification_v1.parquet
+data/processed/transaction_edges_with_row_id.parquet
+```
 
-3. Install required dependencies:
-   ```bash
-   pip install -r requirements-lock.txt
-   ```
+`data/processed/rapid_pass_through_candidates_v5.parquet` is optional. Without it, the API can start but rapid pass-through account counts, account evidence, and the CSV export will be empty.
 
-4. Start the FastAPI backend server:
-   ```bash
-   python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8001 --reload
-   ```
-   > 🌐 **Backend API:** `http://127.0.0.1:8001`<br>
-   > 📑 **Interactive API Docs (Swagger):** `http://127.0.0.1:8001/docs`
+The source transaction CSV is only needed for uploads or the documented transaction rebuild scripts. Keep it in `data/uploads/` when needed. **Do not commit the source CSV, processed account-level files, uploads, or backups to a public repository.** The `.gitignore` rules protect the usual local data paths; check `git status` carefully before publishing.
 
----
+The files required by the API are not all generated by this repository. In particular, upstream generation inputs for the graph, fan, temporal, and final risk artifacts are not included. A clean checkout plus only the raw CSV is therefore not enough to recreate the complete production risk dataset. See [`data/README.md`](./data/README.md) for the file requirements and available rebuild steps.
 
-### Step 2: Setup & Run Frontend
+## Run on Windows
 
-1. Open a **new terminal** window and navigate to the `frontend` directory:
-   ```bash
-   cd frontend
-   ```
+From PowerShell at the project root:
 
-2. Install Node dependencies:
-   ```bash
-   npm ci
-   ```
+```powershell
+.\start.ps1
+```
 
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-   > 🖥️ **Frontend Application:** `http://localhost:5173`
+The launcher checks the required data files and Python/Node versions, installs the locked backend dependencies, installs frontend dependencies if they are missing, starts the API and Vite, and checks that both are responding. It opens the app at **http://127.0.0.1:5173**. The API health endpoint is **http://127.0.0.1:8001/health**. Keep the launcher window open; press **Ctrl+C** to stop the servers.
 
----
+To choose a Python installation explicitly:
 
-## 📡 API Endpoints Overview
+```powershell
+.\start.ps1 -PythonPath 'C:\Path\To\Python313\python.exe'
+```
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/health` | API health check & dataset loading status |
-| `GET` | `/overview/stats` | System-wide dataset counters & risk distributions |
-| `GET` | `/accounts` | Paginated account list with filtering & risk sorting |
-| `GET` | `/accounts/{id}/details` | Comprehensive risk breakdown for a single account |
-| `GET` | `/accounts/{id}/trace` | Execute 4-hop chronological fund tracing |
-| `GET` | `/network/global-graph` | Fetch global high-hub network topology data |
-| `GET` | `/detection/signals` | Fetch fan-in/fan-out & rapid pass-through signal stats |
-| `POST` | `/reports/generate` | Generate JSON/CSV investigation summary report |
+If local script execution is blocked, run the launcher for this process:
 
----
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
+```
 
-## 📜 License & Disclaimers
+If using Windows PowerShell instead of PowerShell 7, replace `pwsh` with `powershell`.
 
-This project is built for forensic investigation, academic research, and anti-money laundering (AML) demonstration purposes. Chronological candidate paths and risk percentile scores serve as investigative aids and are not definitive legal proof of illegal activity.
+## Manual setup (Windows, macOS, or Linux)
+
+### Backend
+
+From the repository root, create and activate a virtual environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+On macOS/Linux, activate it with `source .venv/bin/activate`. Then install the pinned backend requirements and start the API:
+
+```shell
+python -m pip install -r requirements-lock.txt
+python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8001
+```
+
+### Frontend
+
+In a second terminal:
+
+```shell
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Open **http://127.0.0.1:5173**. Vite proxies frontend `/api` requests to `http://127.0.0.1:8001`; keep both servers running on the same machine.
+
+## Main screens and outputs
+
+- **Overview:** total account and transaction counts, anomaly-supported and other screening counts, layer/signal summaries, and CSV downloads.
+- **Data Analysis:** upload a CSV/Parquet transaction file or inspect the default source file. Diagnostics require `Sender_Account` and `Receiver_Account`; they count rows, distinct accounts, and missing account identifiers. This does **not** rebuild risk features or rerun the full detection pipeline.
+- **Account Investigation:** account-level composite percentiles, graph/layer evidence, rapid pass-through evidence, transaction activity, and reports.
+- **Network Graph and Fund Tracing:** interactive network and chronological candidate paths. A path is not proof of exact fund attribution.
+- **Reports & Exports:** account reports and full screening CSV files.
+
+### CSV exports
+
+- `GET /exports/high-risk` — accounts meeting both the final-risk threshold and Isolation Forest anomaly check.
+- `GET /exports/low-risk` — remaining accounts; this does not mean they are confirmed legitimate.
+- `GET /exports/rapid-pass-through` — one row per account with qualifying pass-through evidence, including event count and available evidence/risk columns.
+
+The rapid pass-through detector screens for funds moved within a 3–15 minute window and uses its configured ratio/transaction/counterparty conditions. Treat its output as candidate evidence, not a confirmed mule list.
+
+## API endpoint reference
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Service health and loaded-account/rapid-candidate counts |
+| `GET` | `/overview/stats` | Dataset totals and rule/anomaly screening counts |
+| `GET` | `/accounts` | Paginated/searchable account list |
+| `GET` | `/accounts/{account_id}/details` | Risk scores, screening status, and evidence |
+| `GET` | `/accounts/{account_id}/risk` | Account risk summary |
+| `GET` | `/accounts/{account_id}/transactions` | Paginated account transactions |
+| `GET` | `/accounts/{account_id}/trace` | Chronological candidate fund paths |
+| `GET` | `/network/global-graph` | Global network graph data |
+| `GET` | `/detection/signals` | Detection signal counts and descriptions |
+| `GET` | `/exports/high-risk` | Anomaly-supported candidate CSV |
+| `GET` | `/exports/low-risk` | Other screening results CSV |
+| `GET` | `/exports/rapid-pass-through` | Rapid pass-through account CSV |
+| `POST` | `/analysis/run` | Inspect a named project/upload CSV or Parquet file |
+| `POST` | `/analysis/upload` | Upload and validate a transaction CSV or Parquet file |
+| `POST` | `/reports/generate` | Generate a JSON investigation summary |
+
+Interactive API documentation is available at **http://127.0.0.1:8001/docs** while the API is running.
+
+## Rebuild available transaction artifacts
+
+With an authorized raw transaction CSV in `data/uploads/`, run the following from the repository root:
+
+```powershell
+python tests/rebuild_transaction_edges.py
+python tests/add_source_row_id.py
+python backend/detection/rapid_pass_through.py
+```
+
+These scripts process the full transaction dataset and may take significant time and disk space. The first two prepare transaction edges for the API and fund tracing; the third generates rapid pass-through candidate evidence. They do not regenerate the full risk inputs required by the API. See [`data/README.md`](./data/README.md) before rebuilding.
+
+## Checks
+
+Frontend:
+
+```shell
+cd frontend
+npm run lint
+npm run build
+```
+
+Backend checks and data-validation scripts are in `tests/`. Some test scripts require the authorized data artifacts and perform full-dataset reads; consult each script before running it.
+
+## Privacy, safety, and limitations
+
+- Do not put transaction CSVs, account-level Parquet/CSV outputs, backups, or customer information in a public repo, public release, issue, or log.
+- Share data only if authorized, through an approved private channel, and in accordance with applicable data-protection requirements.
+- Rule matches, layer classifications, percentiles, and Isolation Forest anomalies are leads for human review—not confirmed fraud, legal findings, or calibrated probabilities.
+- Knowing an expected number of mule accounts does not identify which accounts are mules. Reliable supervised model evaluation requires verified labels and representative held-out data.
+- Review false positives and false negatives, data quality, and model drift before operational use.
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE). The license applies to the project's code and documentation, not to transaction datasets or other third-party materials; obtain authorization for any data you use.

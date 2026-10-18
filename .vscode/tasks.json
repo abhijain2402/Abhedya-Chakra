@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Abhedya Chakra",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"D:\\projects\\VisionX\\start.ps1"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

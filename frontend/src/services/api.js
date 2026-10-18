@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://127.0.0.1:8001';
+const API_BASE_URL = '/api';
 
 async function handleResponse(response) {
   if (!response.ok) {
@@ -107,4 +107,8 @@ export function getExportHighRiskUrl() {
 
 export function getExportLowRiskUrl() {
   return `${API_BASE_URL}/exports/low-risk`;
+}
+
+export function getExportRapidPassThroughUrl() {
+  return `${API_BASE_URL}/exports/rapid-pass-through`;
 }
